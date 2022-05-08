@@ -1,0 +1,13 @@
+{
+    "name": "com.medzumi.viewmodel",
+    "author": "Medzumi",
+    "displayName": "ViewModel",
+    "unity": "2020.3",
+    "version": "1.0.0",
+    "dependencies": {
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/medzumi/viewModel.git"
+    }
+}
