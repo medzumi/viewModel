@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using Utilities.Unity.Components;
 
 namespace ViewModel.Unity
 {
+    [RequireComponent(typeof(PivotFixer))]
     public class InfinityContentView : MonoBehaviour
     {
         [SerializeField] private ViewModelDataProvider<CollectionData> _collectionData;
@@ -17,6 +19,8 @@ namespace ViewModel.Unity
         
         private int _startIndex = -1;
         private int _endIndex = -1;
+
+        private Vector2 _speed;
 
         private readonly LinkedList<IViewModel> _viewModels = new LinkedList<IViewModel>();
 
@@ -103,26 +107,24 @@ namespace ViewModel.Unity
 
         private void LateUpdate()
         {
+            var delta = _content.position - (Vector3)_speed;
+            _speed = delta* 0.5f + _content.position;
             if (_collectionData.GetData().Count != 0)
             {
                 var scale = _viewport.lossyScale;
                 var viewPortPosition = Devide(_viewport.position, scale);
-                
+                var scaledSpeed = Devide(_speed, scale);
                 var firstElement = _viewModels.First.Value as MonoBehaviour;
                 var firstRect = firstElement.transform as RectTransform;
                 var firstPos = Devide(firstRect.position, scale);
                 if (viewPortPosition.x + _viewport.rect.xMin > firstPos.x + firstRect.rect.xMax && _viewModels.Count > 1)
                 {
-                    var previousPivot = _content.pivot;
-                    _content.pivot = new Vector2(1, 0);
-                    _content.ForceUpdateRectTransforms();
-                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
                     _viewModels.First.Value.Dispose();
                     _viewModels.RemoveFirst();
                     _startIndex++;
                     LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
                 }
-                else if(viewPortPosition.x + _viewport.rect.xMin < firstPos.x + firstRect.rect.xMin)
+                else if(viewPortPosition.x + _viewport.rect.xMin + scaledSpeed.x < firstPos.x + firstRect.rect.xMin)
                 {
                     _startIndex--;
                     if (_startIndex < 0 && !_isLooped)
@@ -136,9 +138,9 @@ namespace ViewModel.Unity
                         _viewModels.AddFirst(viewModel);
                         if (viewModel is MonoBehaviour monoBehaviour)
                         {
-                            var previousPivot = _content.pivot;
-                            _content.pivot = new Vector2(1, 0);
+#if UNITY_EDITOR
                             monoBehaviour.name = $"Element {_startIndex}";
+#endif
                             monoBehaviour.gameObject.SetActive(true);
                             monoBehaviour.transform.SetParent(_content);
                             monoBehaviour.transform.SetAsFirstSibling();
@@ -156,21 +158,18 @@ namespace ViewModel.Unity
             {
                 var scale = _viewport.lossyScale;
                 var viewPortPosition = Devide(_viewport.position, scale);
-                
+                var scaledSpeed = Devide(_speed, scale);
                 var lastElement = _viewModels.Last.Value as MonoBehaviour;
                 var lastRect = lastElement.transform as RectTransform;
                 var lastPos = Devide(lastRect.position, scale);
                 if (viewPortPosition.x + _viewport.rect.xMax < lastPos.x + lastRect.rect.xMin && _viewModels.Count > 1)
                 {
-                    var previousPivot = _content.pivot;
-                    _content.pivot = new Vector2(0, 0);
-                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
                     _viewModels.Last.Value.Dispose();
                     _viewModels.RemoveLast();
                     _endIndex--;
                     LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
                 }
-                else if(viewPortPosition.x + _viewport.rect.xMax > lastPos.x + lastRect.rect.xMax)
+                else if(viewPortPosition.x + _viewport.rect.xMax + scaledSpeed.x > lastPos.x + lastRect.rect.xMax)
                 {
                     _endIndex++;
                     if (_collectionData.GetData().Count <= _endIndex && !_isLooped)
@@ -184,9 +183,9 @@ namespace ViewModel.Unity
                         _viewModels.AddLast(viewmodel);
                         if (viewmodel is MonoBehaviour monoBehaviour)
                         {
-                            var previousPivot = _content.pivot;
-                            _content.pivot = new Vector2(0, 0);
+#if UNITY_EDITOR
                             monoBehaviour.name = $"Element {_endIndex}";
+#endif
                             monoBehaviour.gameObject.SetActive(true);
                             monoBehaviour.transform.SetParent(_content);
                             monoBehaviour.transform.SetAsLastSibling();
