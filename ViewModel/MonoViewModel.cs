@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Components;
 using UnityEngine;
 using Utilities.SerializeReferencing;
 
 namespace ViewModel
 {
     [DefaultExecutionOrder(-100)]
-    public class MonoViewModel : MonoBehaviour, IViewModel
+    public class MonoViewModel : MonoBehaviour, IViewModel, IDisposeHandler
     {
         [Serializable]
         private class CustomPair
@@ -28,7 +29,7 @@ namespace ViewModel
 
         [SerializeField] private List<CustomPair> _customPairs = new List<CustomPair>();
         [SerializeField] private List<ViewModelPlace> _viewModelPlaces = new List<ViewModelPlace>();
-        private readonly List<IDisposable> _disposables = new List<IDisposable>();
+        private readonly DisposeHandler _disposeHandler = new DisposeHandler();
 
         private bool _isDisposed = false;
 
@@ -51,15 +52,19 @@ namespace ViewModel
             return (T)data;
         }
 
+        public T Subscribe<T>(T disposable) where T : IDisposable
+        {
+            throw new NotImplementedException();
+        }
+
         public object GetViewModelData(string key)
         {
             return GetViewModelDataHandler(key);
         }
 
-        public T AddTo<T>(T disposable) where T : IDisposable
+        public void Subscribe(IDisposable disposable)
         {
-            _disposables.Add(disposable);
-            return disposable;
+            _disposeHandler.Subscribe(disposable);
         }
 
         public void SetViewModel(IViewModel viewModel, string key = null)
@@ -80,11 +85,7 @@ namespace ViewModel
 
             _isDisposed = true;
             
-            foreach (var disposable in _disposables)
-            {
-                disposable?.Dispose();
-            }
-            _disposables.Clear();
+            _disposeHandler.Dispose();
             
             foreach (var keyValuePair in _customPairs)
             {
@@ -103,6 +104,7 @@ namespace ViewModel
         public void Reset()
         {
             _isDisposed = false;
+            _disposeHandler.Reset();
         }
 
         private void OnDestroy()

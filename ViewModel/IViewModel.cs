@@ -8,7 +8,7 @@ namespace ViewModel
     {
         T GetViewModelData<T>(string propertyName) where T : IViewModelData;
 
-        T AddTo<T>(T disposable) where T : IDisposable;
+        T Subscribe<T>(T disposable) where T : IDisposable;
 
         void SetViewModel(IViewModel viewModel, string key = null);
     }
