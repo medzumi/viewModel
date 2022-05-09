@@ -1,4 +1,4 @@
-﻿namespace Presenting
+﻿namespace ViewModel
 {
     public interface IBindData
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Presenting
+namespace ViewModel
 {
     [AttributeUsage(AttributeTargets.Field)]
     public class BindAttribute : Attribute
