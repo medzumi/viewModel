@@ -25,127 +25,180 @@ namespace ViewModel.Unity
             Horizontal,
             Vertical
         }
-        
+
         private void Awake()
         {
+            _collectionData.GetData().OnUpdate += UpdateHandler;
         }
 
         private void OnEnable()
         {
-            _startIndex = -1;
-            _endIndex = -1;
+            _startIndex = 0;
+            UpdateHandler();
         }
 
         private void UpdateHandler()
         {
-        }
-
-        private void Update()
-        {
             var data = _collectionData.GetData();
-            if (_endIndex >= data.Count)
+
+            if (!_isLooped)
             {
-                _endIndex = data.Count;
+                if (_startIndex > data.Count)
+                {
+                    _startIndex = data.Count - 1;
+                }else if (_startIndex < 0)
+                {
+                    _startIndex = 0;
+                }
+            }
+
+            foreach (var viewModel in _viewModels)
+            {
+                viewModel.Dispose();
             }
             
-            var newIndexes = Update(_startIndex, _endIndex);
-            while (_startIndex != newIndexes.Item1 || _endIndex != newIndexes.Item2)
+            _viewModels.Clear();
+
+            if (data.Count == 0)
             {
-             if (_startIndex > newIndexes.Item1 && newIndexes.Item1 > -1)
-             {
-                 var viewModel = data.FillViewModel(newIndexes.Item1);
-                 if (viewModel is MonoBehaviour monoBehaviour)
-                 {
-                     monoBehaviour.gameObject.SetActive(true);
-                     monoBehaviour.transform.SetParent(_content);
-                     monoBehaviour.transform.SetAsFirstSibling();
-                 }
-                 else
-                 {
-                     throw new Exception("Not mono view model");
-                 }
+                return;
+            }
+            
+            var scale = _viewport.lossyScale;
+            var viewPortPosition = Devide(_viewport.position, scale);
 
-                 _viewModels.AddFirst(viewModel);
-             }
-             else if(_startIndex < newIndexes.Item1 && newIndexes.Item1 < data.Count)
-             {
-                 _viewModels.First.Value.Dispose();
-                 _viewModels.RemoveFirst();
-             }
-             _startIndex = newIndexes.Item1;
-             
-             if (_endIndex > newIndexes.Item2 && newIndexes.Item2 > -1)
-             {
-                 _viewModels.Last.Value.Dispose();
-                 _viewModels.RemoveLast();
-                 
-             }
-             else if(_endIndex < newIndexes.Item2 && newIndexes.Item2 < data.Count)
-             {
-                 var viewModel = data.FillViewModel(newIndexes.Item2);
-                 if (viewModel is MonoBehaviour monoBehaviour)
-                 {
-                     monoBehaviour.gameObject.SetActive(true);
-                     monoBehaviour.transform.SetParent(_content);
-                     monoBehaviour.transform.SetAsLastSibling();
-                 }
-                 else
-                 {
-                     throw new Exception("Not mono view model");
-                 }
-
-                 _viewModels.AddLast(viewModel);
-             }
-             _endIndex = newIndexes.Item2;
+            _endIndex = _startIndex;
+            for (int i = _startIndex; (i < data.Count && i >= 0) || _isLooped; i++)
+            {
+                var index = i;
+                if (_isLooped)
+                {
+                    index %= data.Count;
+                }
+                
+                var viewModel = data.FillViewModel(index);
+                if (viewModel is MonoBehaviour monoBehaviour)
+                {
+                    monoBehaviour.gameObject.SetActive(true);
+                    monoBehaviour.transform.SetParent(_content);
+                    #if UNITY_EDITOR
+                    monoBehaviour.name = $"Element {i}";
+                    #endif
+                    _viewModels.AddLast(viewModel);
+                    var monoRect = monoBehaviour.transform as RectTransform;
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                    var monoPosition = Devide(monoRect.position, scale);
+                    _endIndex++;
+                    if (viewPortPosition.x + _viewport.rect.xMax < monoPosition.x + monoRect.rect.width / 2f)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    throw new Exception("Not mono view model");
+                }
             }
         }
 
-        private (int, int)  Update(int from, int to)
+        private void LateUpdate()
         {
-            var availableSpace = _viewport.rect.size;
-            var viewPortScale = _viewport.lossyScale;
-            var viewPortPosition = Devide(_viewport.position, viewPortScale);
-            if (_viewModels.Count != 0)
+            if (_collectionData.GetData().Count != 0)
             {
-                if (_viewModels.First.Value is MonoBehaviour monoBehaviour)
+                var scale = _viewport.lossyScale;
+                var viewPortPosition = Devide(_viewport.position, scale);
+                
+                var firstElement = _viewModels.First.Value as MonoBehaviour;
+                var firstRect = firstElement.transform as RectTransform;
+                var firstPos = Devide(firstRect.position, scale);
+                if (viewPortPosition.x + _viewport.rect.xMin > firstPos.x + firstRect.rect.xMax && _viewModels.Count > 1)
                 {
-                    var viewModelRect = monoBehaviour.transform as RectTransform;
-                    var viewModelPosition = Devide(viewModelRect.position, viewPortScale);
-                    if (viewPortPosition.x + _viewport.rect.xMin >
-                        viewModelPosition.x - viewModelRect.rect.width / 2f)
+                    var previousPivot = _content.pivot;
+                    _content.pivot = new Vector2(1, 0);
+                    _content.ForceUpdateRectTransforms();
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                    _viewModels.First.Value.Dispose();
+                    _viewModels.RemoveFirst();
+                    _startIndex++;
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                }
+                else if(viewPortPosition.x + _viewport.rect.xMin < firstPos.x + firstRect.rect.xMin)
+                {
+                    _startIndex--;
+                    if (_startIndex < 0 && !_isLooped)
                     {
-                        from++;
+                        _startIndex = 0;
                     }
                     else
                     {
-                        from--;
+                        var viewModel = _collectionData.GetData()
+                            .FillViewModel(_startIndex % _collectionData.GetData().Count);
+                        _viewModels.AddFirst(viewModel);
+                        if (viewModel is MonoBehaviour monoBehaviour)
+                        {
+                            var previousPivot = _content.pivot;
+                            _content.pivot = new Vector2(1, 0);
+                            monoBehaviour.name = $"Element {_startIndex}";
+                            monoBehaviour.gameObject.SetActive(true);
+                            monoBehaviour.transform.SetParent(_content);
+                            monoBehaviour.transform.SetAsFirstSibling();
+                            LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                        }
+                        else
+                        {
+                            throw new Exception("Not mono view model");
+                        }
                     }
                 }
             }
-
+            
             if (_viewModels.Count != 0)
             {
-                if (_viewModels.Last.Value is MonoBehaviour monoBehaviour2)
+                var scale = _viewport.lossyScale;
+                var viewPortPosition = Devide(_viewport.position, scale);
+                
+                var lastElement = _viewModels.Last.Value as MonoBehaviour;
+                var lastRect = lastElement.transform as RectTransform;
+                var lastPos = Devide(lastRect.position, scale);
+                if (viewPortPosition.x + _viewport.rect.xMax < lastPos.x + lastRect.rect.xMin && _viewModels.Count > 1)
                 {
-                    var viewModelRect = monoBehaviour2.transform as RectTransform;
-                    var viewModelPosition = Devide(viewModelRect.position, viewPortScale);
-
-                    if (viewPortPosition.x + _viewport.rect.xMax < viewModelPosition.x + viewModelRect.rect.width / 2f)
+                    var previousPivot = _content.pivot;
+                    _content.pivot = new Vector2(0, 0);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                    _viewModels.Last.Value.Dispose();
+                    _viewModels.RemoveLast();
+                    _endIndex--;
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                }
+                else if(viewPortPosition.x + _viewport.rect.xMax > lastPos.x + lastRect.rect.xMax)
+                {
+                    _endIndex++;
+                    if (_collectionData.GetData().Count <= _endIndex && !_isLooped)
                     {
-                        to--;
+                        _endIndex = _collectionData.GetData().Count - 1;
                     }
                     else
                     {
-                        to++;
+                        var viewmodel = _collectionData.GetData()
+                            .FillViewModel(_endIndex % _collectionData.GetData().Count);
+                        _viewModels.AddLast(viewmodel);
+                        if (viewmodel is MonoBehaviour monoBehaviour)
+                        {
+                            var previousPivot = _content.pivot;
+                            _content.pivot = new Vector2(0, 0);
+                            monoBehaviour.name = $"Element {_endIndex}";
+                            monoBehaviour.gameObject.SetActive(true);
+                            monoBehaviour.transform.SetParent(_content);
+                            monoBehaviour.transform.SetAsLastSibling();
+                            LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+                        }
+                        else
+                        {
+                            throw new Exception("Not mono view model");
+                        }
                     }
-                }
+                }   
             }
-            else
-            {
-                to++;
-            }
-
-            return (from, to);
         }
 
         private Vector2 Devide(Vector2 a, Vector2 b)
