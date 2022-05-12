@@ -7,7 +7,7 @@ using Utilities.Unity.Components;
 
 namespace ViewModel.Unity
 {
-    [RequireComponent(typeof(PivotFixer))]
+    [Obsolete("Doesnt work yet. Require custom scroll rect")]
     public class InfinityContentView : MonoBehaviour
     {
         [SerializeField] private ViewModelDataProvider<CollectionData> _collectionData;

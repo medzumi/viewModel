@@ -52,11 +52,6 @@ namespace ViewModel
             return (T)data;
         }
 
-        public T Subscribe<T>(T disposable) where T : IDisposable
-        {
-            throw new NotImplementedException();
-        }
-
         public object GetViewModelData(string key)
         {
             return GetViewModelDataHandler(key);
