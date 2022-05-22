@@ -80,11 +80,10 @@ namespace ViewModel
 
             _isDisposed = true;
             
-            _disposeHandler.Dispose();
             
             foreach (var keyValuePair in _customPairs)
             {
-                if (keyValuePair.Data is IViewModelProperty viewModelProperty)
+                if (keyValuePair.Data is IResetable viewModelProperty)
                 {
                     viewModelProperty.Reset();
                 }
@@ -94,6 +93,8 @@ namespace ViewModel
             {
                 viewModelPlace.ViewModel?.Dispose();
             }
+            
+            _disposeHandler.Dispose();
         }
 
         public void Reset()

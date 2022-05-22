@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Utilities.CodeExtensions;
+using Utilities.Unity.Extensions;
 
 namespace ViewModel.Unity
 {
+    //ToDo : add refiling with new views
     public class CollectionView : MonoBehaviour
     {
         [SerializeField] private Transform _content;
@@ -17,27 +20,28 @@ namespace ViewModel.Unity
             _currentCount = 0;
             _collectionDataProvider
                 .GetData()
-                .OnUpdate += UpdateHandler;
-            UpdateHandler();
+                .OnUpdateCollection += UpdateCollectionHandler;
+            UpdateCollectionHandler();
         }
 
         private void OnDisable()
         {
-            foreach (var valueTuple in _viewCollection)
+            for (int i = 0; i < _currentCount; i++)
             {
-                valueTuple.Item2.gameObject.SetActive(false);
+                var valueTuple = _viewCollection[i];
                 valueTuple.Item1.Dispose();
+                valueTuple.Item2.gameObject.SetActive(false);
             }
 
             _currentCount = 0;
         }
 
-        private void UpdateHandler()
+        private void UpdateCollectionHandler()
         {
             var collectionData = _collectionDataProvider.GetData();
             for (int i = _currentCount; i < collectionData.Count; i++)
             {
-                var viewModel = collectionData.FillViewModel(i);
+                var viewModel = collectionData.RequestView(i);
                 if (viewModel is MonoBehaviour monoBehaviour)
                 {
                     monoBehaviour.gameObject.SetActive(true);
@@ -54,17 +58,17 @@ namespace ViewModel.Unity
 
                     _currentCount++;
                 }
-                else
+                else if(viewModel.IsNotNullInUnity())
                 {
                     throw new Exception("Isn't monobehaviour");
                 }
             }
 
-            for (int i = collectionData.Count; i > _currentCount; i--)
+            for (int i = _currentCount; i > collectionData.Count; i--)
             {
                 var tuple = _viewCollection[i - 1];
-                tuple.Item2.gameObject.SetActive(false);
                 tuple.Item1.Dispose();
+                tuple.Item2.gameObject.SetActive(false);
                 _viewCollection[i - 1] = (null, null);
                 _currentCount--;
             }

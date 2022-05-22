@@ -32,16 +32,16 @@ namespace ViewModel.Unity
 
         private void Awake()
         {
-            _collectionData.GetData().OnUpdate += UpdateHandler;
+            _collectionData.GetData().OnUpdateCollection += UpdateCollectionHandler;
         }
 
         private void OnEnable()
         {
             _startIndex = 0;
-            UpdateHandler();
+            UpdateCollectionHandler();
         }
 
-        private void UpdateHandler()
+        private void UpdateCollectionHandler()
         {
             var data = _collectionData.GetData();
 
@@ -80,7 +80,7 @@ namespace ViewModel.Unity
                     index %= data.Count;
                 }
                 
-                var viewModel = data.FillViewModel(index);
+                var viewModel = data.RequestView(index);
                 if (viewModel is MonoBehaviour monoBehaviour)
                 {
                     monoBehaviour.gameObject.SetActive(true);
@@ -134,7 +134,7 @@ namespace ViewModel.Unity
                     else
                     {
                         var viewModel = _collectionData.GetData()
-                            .FillViewModel(_startIndex % _collectionData.GetData().Count);
+                            .RequestView(_startIndex % _collectionData.GetData().Count);
                         _viewModels.AddFirst(viewModel);
                         if (viewModel is MonoBehaviour monoBehaviour)
                         {
@@ -179,7 +179,7 @@ namespace ViewModel.Unity
                     else
                     {
                         var viewmodel = _collectionData.GetData()
-                            .FillViewModel(_endIndex % _collectionData.GetData().Count);
+                            .RequestView(_endIndex % _collectionData.GetData().Count);
                         _viewModels.AddLast(viewmodel);
                         if (viewmodel is MonoBehaviour monoBehaviour)
                         {

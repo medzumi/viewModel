@@ -16,7 +16,6 @@ namespace ViewModel
 
     public interface IViewModelProperty
     {
-        void Reset();
     }
     
     public interface IViewModelProperty<T> : IViewModelEvent<T>, IViewModelProperty

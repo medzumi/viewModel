@@ -5,7 +5,7 @@ namespace ViewModel.Unity
 {
     public class NullInvoker : MonoBehaviour
     {
-        [SerializeField] private ViewModelDataProvider<ViewModelProperty<NullData>> _data;
+        [SerializeField] private ViewModelDataProvider<IViewModelEvent<NullData>> _data;
 
         public void Invoke()
         {

@@ -20,7 +20,7 @@ namespace ViewModel.UniTaskData
     }
 
     [Serializable]
-    public class ViewModelProperty<T> : IViewModelProperty<T>
+    public class ViewModelProperty<T> : IViewModelProperty<T>, IResetable
     {
         [SerializeField] private T _defaultValue;
         
